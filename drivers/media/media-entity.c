@@ -861,6 +861,8 @@ static void media_interface_init(struct media_device *mdev,
 	INIT_LIST_HEAD(&intf->links);
 
 	media_gobj_init(mdev, gobj_type, &intf->graph_obj);
+
+	list_add_tail(&intf->list, &mdev->interfaces);
 }
 
 /* Functions related to the media interface via device nodes */
@@ -889,6 +891,7 @@ EXPORT_SYMBOL_GPL(media_devnode_create);
 void media_devnode_remove(struct media_intf_devnode *devnode)
 {
 	media_gobj_remove(&devnode->intf.graph_obj);
+	list_del(&devnode->intf.list);
 	kfree(devnode);
 }
 EXPORT_SYMBOL_GPL(media_devnode_remove);
