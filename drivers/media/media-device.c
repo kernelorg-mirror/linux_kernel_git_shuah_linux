@@ -574,6 +574,22 @@ void media_device_unregister(struct media_device *mdev)
 {
 	struct media_entity *entity;
 	struct media_entity *next;
+	struct media_link *link, *tmp_link;
+	struct media_interface *intf, *tmp_intf;
+
+	/* Remove interface links from the media device */
+	list_for_each_entry_safe(link, tmp_link, &mdev->links,
+				 graph_obj.list) {
+		media_gobj_remove(&link->graph_obj);
+		kfree(link);
+	}
+
+	/* Remove all interfaces from the media device */
+	list_for_each_entry_safe(intf, tmp_intf, &mdev->interfaces,
+				 graph_obj.list) {
+		media_gobj_remove(&intf->graph_obj);
+		kfree(intf);
+	}
 
 	list_for_each_entry_safe(entity, next, &mdev->entities, graph_obj.list)
 		media_device_unregister_entity(entity);
@@ -651,7 +667,6 @@ void media_device_unregister_entity(struct media_entity *entity)
 	/* Remove all data links that belong to this entity */
 	list_for_each_entry_safe(link, tmp, &entity->links, list) {
 		media_gobj_remove(&link->graph_obj);
-		list_del(&link->list);
 		kfree(link);
 	}
 

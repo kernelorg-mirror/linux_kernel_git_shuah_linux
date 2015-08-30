@@ -153,7 +153,7 @@ struct media_entity {
 };
 
 /**
- * struct media_intf_devnode - Define a Kernel API interface
+ * struct media_interface - Define a Kernel API interface
  *
  * @graph_obj:		embedded graph object
  * @list:		Linked list used to find other interfaces that belong
@@ -163,6 +163,11 @@ struct media_entity {
  *			uapi/media/media.h header, e. g.
  *			MEDIA_INTF_T_*
  * @flags:		Interface flags as defined at uapi/media/media.h
+ *
+ * NOTE: As media_device_unregister() will free the address of the
+ *	 media_interface, this structure should be embedded as the first
+ *	 element of the derived functions, in order for the address to be
+ *	 the same.
  */
 struct media_interface {
 	struct media_gobj		graph_obj;
@@ -179,11 +184,11 @@ struct media_interface {
  * @minor:	Minor number of a device node
  */
 struct media_intf_devnode {
-	struct media_interface		intf;
+	struct media_interface	intf; /* must be first field in struct */
 
 	/* Should match the fields at media_v2_intf_devnode */
-	u32				major;
-	u32				minor;
+	u32			major;
+	u32			minor;
 };
 
 static inline u32 media_entity_id(struct media_entity *entity)

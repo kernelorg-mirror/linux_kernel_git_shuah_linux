@@ -206,6 +206,10 @@ void media_gobj_remove(struct media_gobj *gobj)
 
 	/* Remove the object from mdev list */
 	list_del(&gobj->list);
+
+	/* Links have their own list - we need to drop them there too */
+	if (media_type(gobj) == MEDIA_GRAPH_LINK)
+		list_del(&gobj_to_link(gobj)->list);
 }
 
 /**
