@@ -175,8 +175,6 @@ static void au0828_usb_disconnect(struct usb_interface *interface)
 	*/
 	dev->dev_state = DEV_DISCONNECTED;
 
-	au0828_unregister_media_device(dev);
-
 	au0828_rc_unregister(dev);
 	/* Digital TV */
 	au0828_dvb_unregister(dev);
@@ -193,6 +191,8 @@ static void au0828_usb_disconnect(struct usb_interface *interface)
 		return;
 	}
 #endif
+	au0828_unregister_media_device(dev);
+
 	au0828_usb_release(dev);
 }
 
