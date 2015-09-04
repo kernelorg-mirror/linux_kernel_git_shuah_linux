@@ -430,17 +430,6 @@ int dvb_register_device(struct dvb_adapter *adap, struct dvb_device **pdvbdev,
 		return -ENOMEM;
 	}
 
-	ret = dvb_register_media_device(dvbdev, type, minor, demux_sink_pads);
-	if (ret) {
-		printk(KERN_ERR
-		      "%s: dvb_register_media_device failed to create the mediagraph\n",
-		      __func__);
-
-		dvb_media_device_free(dvbdev);
-		mutex_unlock(&dvbdev_register_lock);
-		return ret;
-	}
-
 	dvbdevfops = kzalloc(sizeof(struct file_operations), GFP_KERNEL);
 
 	if (!dvbdevfops){
@@ -493,6 +482,17 @@ int dvb_register_device(struct dvb_adapter *adap, struct dvb_device **pdvbdev,
 		       __func__, adap->num, dnames[type], id, PTR_ERR(clsdev));
 		return PTR_ERR(clsdev);
 	}
+
+	ret = dvb_register_media_device(dvbdev, type, minor, demux_sink_pads);
+	if (ret) {
+		printk(KERN_ERR
+		      "%s: dvb_register_media_device failed to create the media graph\n",
+		      __func__);
+
+		dvb_unregister_device(dvbdev);
+		return ret;
+	}
+
 	dprintk(KERN_DEBUG "DVB: register adapter%d/%s%d @ minor: %i (0x%02x)\n",
 		adap->num, dnames[type], id, minor, minor);
 
