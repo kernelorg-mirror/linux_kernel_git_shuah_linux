@@ -229,7 +229,7 @@ static int dvb_create_tsout_entity(struct dvb_device *dvbdev,
 		if (!entity->name)
 			return ret;
 
-		entity->type = MEDIA_ENT_T_DVB_TSOUT;
+		entity->function = MEDIA_ENT_T_DVB_TSOUT;
 		pads->flags = MEDIA_PAD_FL_SINK;
 
 		ret = media_entity_init(entity, 1, pads);
@@ -302,18 +302,18 @@ static int dvb_create_media_entity(struct dvb_device *dvbdev,
 
 	switch (type) {
 	case DVB_DEVICE_FRONTEND:
-		dvbdev->entity->type = MEDIA_ENT_T_DVB_DEMOD;
+		dvbdev->entity->function = MEDIA_ENT_T_DVB_DEMOD;
 		dvbdev->pads[0].flags = MEDIA_PAD_FL_SINK;
 		dvbdev->pads[1].flags = MEDIA_PAD_FL_SOURCE;
 		break;
 	case DVB_DEVICE_DEMUX:
-		dvbdev->entity->type = MEDIA_ENT_T_DVB_DEMUX;
+		dvbdev->entity->function = MEDIA_ENT_T_DVB_DEMUX;
 		dvbdev->pads[0].flags = MEDIA_PAD_FL_SINK;
 		for (i = 1; i < npads; i++)
 			dvbdev->pads[i].flags = MEDIA_PAD_FL_SOURCE;
 		break;
 	case DVB_DEVICE_CA:
-		dvbdev->entity->type = MEDIA_ENT_T_DVB_CA;
+		dvbdev->entity->function = MEDIA_ENT_T_DVB_CA;
 		dvbdev->pads[0].flags = MEDIA_PAD_FL_SINK;
 		dvbdev->pads[1].flags = MEDIA_PAD_FL_SOURCE;
 		break;
@@ -537,7 +537,7 @@ int dvb_create_media_graph(struct dvb_adapter *adap)
 		return 0;
 
 	media_device_for_each_entity(entity, mdev) {
-		switch (entity->type) {
+		switch (entity->function) {
 		case MEDIA_ENT_T_V4L2_SUBDEV_TUNER:
 			tuner = entity;
 			break;
@@ -576,7 +576,7 @@ int dvb_create_media_graph(struct dvb_adapter *adap)
 	/* Create demux links for each ringbuffer/pad */
 	if (demux) {
 		media_device_for_each_entity(entity, mdev) {
-			if (entity->type == MEDIA_ENT_T_DVB_TSOUT) {
+			if (entity->function == MEDIA_ENT_T_DVB_TSOUT) {
 				if (!strncmp(entity->name, DVR_TSOUT,
 				    strlen(DVR_TSOUT))) {
 					ret = media_create_pad_link(demux,
@@ -621,7 +621,7 @@ int dvb_create_media_graph(struct dvb_adapter *adap)
 		}
 
 		media_device_for_each_entity(entity, mdev) {
-			if (entity->type == MEDIA_ENT_T_DVB_TSOUT) {
+			if (entity->function == MEDIA_ENT_T_DVB_TSOUT) {
 				if (!strcmp(entity->name, DVR_TSOUT)) {
 					link = media_create_intf_link(entity,
 							intf,
