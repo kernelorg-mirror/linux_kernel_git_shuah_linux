@@ -279,9 +279,7 @@ static inline bool is_media_entity_v4l2_io(struct media_entity *entity)
 		return false;
 
 	switch (entity->function) {
-	case MEDIA_ENT_T_V4L2_VIDEO:
-	case MEDIA_ENT_T_V4L2_VBI:
-	case MEDIA_ENT_T_V4L2_SWRADIO:
+	case MEDIA_ENT_F_IO:
 		return true;
 	default:
 		return false;
@@ -294,11 +292,11 @@ static inline bool is_media_entity_v4l2_subdev(struct media_entity *entity)
 		return false;
 
 	switch (entity->function) {
-	case MEDIA_ENT_T_V4L2_SUBDEV_SENSOR:
-	case MEDIA_ENT_T_V4L2_SUBDEV_FLASH:
-	case MEDIA_ENT_T_V4L2_SUBDEV_LENS:
-	case MEDIA_ENT_T_V4L2_SUBDEV_DECODER:
-	case MEDIA_ENT_T_V4L2_SUBDEV_TUNER:
+	case MEDIA_ENT_F_CAM_SENSOR:
+	case MEDIA_ENT_F_FLASH:
+	case MEDIA_ENT_F_LENS:
+	case MEDIA_ENT_F_ATV_DECODER:
+	case MEDIA_ENT_F_TUNER:
 		return true;
 
 	default:
