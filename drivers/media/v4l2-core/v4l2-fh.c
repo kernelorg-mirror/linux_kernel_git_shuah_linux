@@ -92,6 +92,7 @@ void v4l2_fh_exit(struct v4l2_fh *fh)
 {
 	if (fh->vdev == NULL)
 		return;
+	v4l_disable_media_tuner(fh->vdev);
 	v4l2_event_unsubscribe_all(fh);
 	fh->vdev = NULL;
 }

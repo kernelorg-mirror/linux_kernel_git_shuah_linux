@@ -2275,6 +2275,9 @@ static int vb2_internal_streamon(struct vb2_queue *q, enum v4l2_buf_type type)
 	 * are available.
 	 */
 	if (q->queued_count >= q->min_buffers_needed) {
+		ret = v4l_enable_media_tuner(q->owner->vdev);
+		if (ret)
+			return ret;
 		ret = vb2_start_streaming(q);
 		if (ret) {
 			__vb2_queue_cancel(q);
