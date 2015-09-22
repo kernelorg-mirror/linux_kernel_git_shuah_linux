@@ -544,6 +544,7 @@ int __must_check __media_device_register(struct media_device *mdev,
 		return -EINVAL;
 
 	INIT_LIST_HEAD(&mdev->entities);
+	INIT_LIST_HEAD(&mdev->entity_notify);
 	INIT_LIST_HEAD(&mdev->interfaces);
 	INIT_LIST_HEAD(&mdev->pads);
 	INIT_LIST_HEAD(&mdev->links);
@@ -581,6 +582,7 @@ void media_device_unregister(struct media_device *mdev)
 	struct media_entity *next;
 	struct media_link *link, *tmp_link;
 	struct media_interface *intf, *tmp_intf;
+	struct media_entity_notify *notify, *nextp;
 
 	/* Remove interface links from the media device */
 	list_for_each_entry_safe(link, tmp_link, &mdev->links,
@@ -598,6 +600,8 @@ void media_device_unregister(struct media_device *mdev)
 
 	list_for_each_entry_safe(entity, next, &mdev->entities, graph_obj.list)
 		media_device_unregister_entity(entity);
+	list_for_each_entry_safe(notify, nextp, &mdev->entity_notify, list)
+		media_device_unregister_entity_notify(mdev, notify);
 
 	device_remove_file(&mdev->devnode.dev, &dev_attr_model);
 	media_devnode_unregister(&mdev->devnode);
@@ -607,6 +611,39 @@ void media_device_unregister(struct media_device *mdev)
 EXPORT_SYMBOL_GPL(media_device_unregister);
 
 /**
+ * media_device_register_entity_notify - Register a media entity notify
+ * callback with a media device. When a new entity is registered, all
+ * the registered media_entity_notify callbacks are invoked.
+ * @mdev:      The media device
+ * @nptr:      The media_entity_notify
+*/
+int __must_check media_device_register_entity_notify(struct media_device *mdev,
+					struct media_entity_notify *nptr)
+{
+	spin_lock(&mdev->lock);
+	list_add_tail(&nptr->list, &mdev->entity_notify);
+	spin_unlock(&mdev->lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(media_device_register_entity_notify);
+
+/**
+ * media_device_unregister_entity_notify - Unregister a media entity notify
+ * callback with a media device. When a new entity is registered, all
+ * the registered media_entity_notify callbacks are invoked.
+ * @mdev:      The media device
+ * @nptr:      The media_entity_notify
+ */
+void media_device_unregister_entity_notify(struct media_device *mdev,
+				struct media_entity_notify *nptr)
+{
+	spin_lock(&mdev->lock);
+	list_del(&nptr->list);
+	spin_unlock(&mdev->lock);
+}
+EXPORT_SYMBOL_GPL(media_device_unregister_entity_notify);
+
+/**
  * media_device_register_entity - Register an entity with a media device
  * @mdev:	The media device
  * @entity:	The entity
@@ -614,6 +651,7 @@ EXPORT_SYMBOL_GPL(media_device_unregister);
 int __must_check media_device_register_entity(struct media_device *mdev,
 					      struct media_entity *entity)
 {
+	struct media_entity_notify *notify, *next;
 	unsigned int i;
 
 	if (entity->function == MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN ||
@@ -636,6 +674,10 @@ int __must_check media_device_register_entity(struct media_device *mdev,
 		media_gobj_init(mdev, MEDIA_GRAPH_PAD,
 			       &entity->pads[i].graph_obj);
 
+	/* invoke entity_notify callbacks */
+	list_for_each_entry_safe(notify, next, &mdev->entity_notify, list) {
+		(notify)->notify(entity, notify->notify_data);
+	}
 	spin_unlock(&mdev->lock);
 
 	return 0;
@@ -682,6 +724,7 @@ void media_device_unregister_entity(struct media_entity *entity)
 	/* Remove the entity */
 	media_gobj_remove(&entity->graph_obj);
 
+	/* invoke entity_notify callbacks to handle entity removal?? */
 	spin_unlock(&mdev->lock);
 	entity->graph_obj.mdev = NULL;
 }

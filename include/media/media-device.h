@@ -32,6 +32,12 @@
 
 struct device;
 
+struct media_entity_notify {
+	struct list_head list;
+	void *notify_data;
+	void (*notify)(struct media_entity *entity, void *notify_data);
+};
+
 /**
  * struct media_device - Media device
  * @dev:	Parent device
@@ -84,6 +90,8 @@ struct media_device {
 	u32 intf_devnode_id;
 
 	struct list_head entities;
+	/* notify callback list invoked when a new entity is registered */
+	struct list_head entity_notify;
 	struct list_head interfaces;
 	struct list_head pads;
 	struct list_head links;
@@ -110,6 +118,11 @@ int __must_check __media_device_register(struct media_device *mdev,
 					 struct module *owner);
 #define media_device_register(mdev) __media_device_register(mdev, THIS_MODULE)
 void media_device_unregister(struct media_device *mdev);
+
+int __must_check media_device_register_entity_notify(struct media_device *mdev,
+					struct media_entity_notify *nptr);
+void media_device_unregister_entity_notify(struct media_device *mdev,
+					struct media_entity_notify *nptr);
 
 int __must_check media_device_register_entity(struct media_device *mdev,
 					      struct media_entity *entity);
@@ -142,6 +155,18 @@ static inline int media_device_register(struct media_device *mdev)
 static inline void media_device_unregister(struct media_device *mdev)
 {
 }
+static inline int media_device_register_entity_notify(
+					struct media_device *mdev,
+					struct media_entity_notify *nptr)
+{
+	return 0;
+}
+static inline void media_device_unregister_entity_notify(
+					struct media_device *mdev,
+					struct media_entity_notify *nptr)
+{
+}
+
 static inline int media_device_register_entity(struct media_device *mdev,
 						struct media_entity *entity)
 {
