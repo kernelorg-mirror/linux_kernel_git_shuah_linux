@@ -20,6 +20,7 @@
  */
 
 #include "au0828.h"
+#include "au8522.h"
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -286,11 +287,13 @@ static int au0828_create_media_graph(struct au0828_dev *dev)
 		if (ret)
 			return ret;
 	}
-	ret = media_create_pad_link(decoder, 1, &dev->vdev.entity, 0,
+	ret = media_create_pad_link(decoder, AU8522_PAD_VID_OUT,
+				    &dev->vdev.entity, 0,
 			 	    MEDIA_LNK_FL_ENABLED);
 	if (ret)
 		return ret;
-	ret = media_create_pad_link(decoder, 2, &dev->vbi_dev.entity, 0,
+	ret = media_create_pad_link(decoder, AU8522_PAD_VBI_OUT,
+				    &dev->vbi_dev.entity, 0,
 				    MEDIA_LNK_FL_ENABLED);
 	if (ret)
 		return ret;
