@@ -87,6 +87,7 @@ struct video_device
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	struct media_entity entity;
 	struct media_intf_devnode *intf_devnode;
+	struct media_pipeline pipe;
 #endif
 	/* device ops */
 	const struct v4l2_file_operations *fops;
@@ -175,6 +176,9 @@ void video_unregister_device(struct video_device *vdev);
 /* helper functions to alloc/release struct video_device, the
    latter can also be used for video_device->release(). */
 struct video_device * __must_check video_device_alloc(void);
+
+int v4l_enable_media_tuner(struct video_device *vdev);
+void v4l_disable_media_tuner(struct video_device *vdev);
 
 /* this release function frees the vdev pointer */
 void video_device_release(struct video_device *vdev);
