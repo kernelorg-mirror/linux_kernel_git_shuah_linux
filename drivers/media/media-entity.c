@@ -397,7 +397,7 @@ EXPORT_SYMBOL_GPL(media_entity_graph_walk_next);
  */
 
 /**
- * media_entity_pipeline_start - Mark a pipeline as streaming
+ * __media_entity_pipeline_start - Mark a pipeline as streaming
  * @entity: Starting entity
  * @pipe: Media pipeline to be assigned to all entities in the pipeline.
  *
@@ -408,18 +408,17 @@ EXPORT_SYMBOL_GPL(media_entity_graph_walk_next);
  * Calls to this function can be nested, in which case the same number of
  * media_entity_pipeline_stop() calls will be required to stop streaming. The
  * pipeline pointer must be identical for all nested calls to
- * media_entity_pipeline_start().
+ * __media_entity_pipeline_start().
+ * User is expected to hold the graph_mutex. If not user can call
+ * media_entity_pipeline_start()
  */
-__must_check int media_entity_pipeline_start(struct media_entity *entity,
-					     struct media_pipeline *pipe)
+__must_check int __media_entity_pipeline_start(struct media_entity *entity,
+						struct media_pipeline *pipe)
 {
-	struct media_device *mdev = entity->graph_obj.mdev;
 	struct media_entity_graph graph;
 	struct media_entity *entity_err = entity;
 	struct media_link *link;
 	int ret;
-
-	mutex_lock(&mdev->graph_mutex);
 
 	media_entity_graph_walk_start(&graph, entity);
 
@@ -490,8 +489,6 @@ __must_check int media_entity_pipeline_start(struct media_entity *entity,
 		}
 	}
 
-	mutex_unlock(&mdev->graph_mutex);
-
 	return 0;
 
 error:
@@ -517,14 +514,25 @@ error:
 			break;
 	}
 
-	mutex_unlock(&mdev->graph_mutex);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(__media_entity_pipeline_start);
 
+__must_check int media_entity_pipeline_start(struct media_entity *entity,
+					     struct media_pipeline *pipe)
+{
+	struct media_device *mdev = entity->graph_obj.mdev;
+	int ret;
+
+	mutex_lock(&mdev->graph_mutex);
+	ret = __media_entity_pipeline_start(entity, pipe);
+	mutex_unlock(&mdev->graph_mutex);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(media_entity_pipeline_start);
 
 /**
- * media_entity_pipeline_stop - Mark a pipeline as not streaming
+ * __media_entity_pipeline_stop - Mark a pipeline as not streaming
  * @entity: Starting entity
  *
  * Mark all entities connected to a given entity through enabled links, either
@@ -534,13 +542,12 @@ EXPORT_SYMBOL_GPL(media_entity_pipeline_start);
  * If multiple calls to media_entity_pipeline_start() have been made, the same
  * number of calls to this function are required to mark the pipeline as not
  * streaming.
+ * User is expected to hold the graph_mutex. If not user can call
+ * media_entity_pipeline_stop()
  */
-void media_entity_pipeline_stop(struct media_entity *entity)
+void __media_entity_pipeline_stop(struct media_entity *entity)
 {
-	struct media_device *mdev = entity->graph_obj.mdev;
 	struct media_entity_graph graph;
-
-	mutex_lock(&mdev->graph_mutex);
 
 	media_entity_graph_walk_start(&graph, entity);
 
@@ -552,7 +559,15 @@ void media_entity_pipeline_stop(struct media_entity *entity)
 				entity->pipe = NULL;
 		}
 	}
+}
+EXPORT_SYMBOL_GPL(__media_entity_pipeline_stop);
 
+void media_entity_pipeline_stop(struct media_entity *entity)
+{
+	struct media_device *mdev = entity->graph_obj.mdev;
+
+	mutex_lock(&mdev->graph_mutex);
+	__media_entity_pipeline_stop(entity);
 	mutex_unlock(&mdev->graph_mutex);
 }
 EXPORT_SYMBOL_GPL(media_entity_pipeline_stop);
