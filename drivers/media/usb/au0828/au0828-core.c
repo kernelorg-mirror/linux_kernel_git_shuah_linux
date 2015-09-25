@@ -287,19 +287,27 @@ static int au0828_create_media_graph(struct au0828_dev *dev)
 		if (ret)
 			return ret;
 	}
-	ret = media_create_pad_link(decoder, AU8522_PAD_VID_OUT,
-				    &dev->vdev.entity, 0,
-			 	    MEDIA_LNK_FL_ENABLED);
-	if (ret)
-		return ret;
-	ret = media_create_pad_link(decoder, AU8522_PAD_VBI_OUT,
-				    &dev->vbi_dev.entity, 0,
-				    MEDIA_LNK_FL_ENABLED);
-	if (ret)
-		return ret;
+
+	if (dev->vdev.entity.graph_obj.mdev) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_VID_OUT,
+					    &dev->vdev.entity, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret)
+			return ret;
+	}
+	if (dev->vbi_dev.entity.graph_obj.mdev) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_VBI_OUT,
+					    &dev->vbi_dev.entity, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret)
+			return ret;
+	}
 
 	for (i = 0; i < AU0828_MAX_INPUT; i++) {
 		struct media_entity *ent = &dev->input_ent[i];
+
+		if (!ent->graph_obj.mdev)
+			continue;
 
 		if (AUVI_INPUT(i).type == AU0828_VMUX_UNDEFINED)
 			break;
