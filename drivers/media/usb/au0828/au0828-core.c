@@ -137,6 +137,8 @@ static void au0828_unregister_media_device(struct au0828_dev *dev)
 #ifdef CONFIG_MEDIA_CONTROLLER
 	if (dev->media_dev &&
 	    media_devnode_is_registered(&dev->media_dev->devnode)) {
+		media_device_unregister_entity_notify(dev->media_dev,
+						      &dev->entity_notify);
 		media_device_unregister(dev->media_dev);
 		dev->media_dev = NULL;
 	}
@@ -215,6 +217,108 @@ static void au0828_usb_disconnect(struct usb_interface *interface)
 	au0828_usb_release(dev);
 }
 
+void au0828_create_media_graph(struct media_entity *new, void *notify_data)
+{
+#ifdef CONFIG_MEDIA_CONTROLLER
+	struct au0828_dev *dev = (struct au0828_dev *) notify_data;
+	struct media_device *mdev = dev->media_dev;
+	struct media_entity *entity;
+	struct media_entity *tuner = NULL, *decoder = NULL;
+	struct media_entity *audio_capture = NULL;
+	int i, ret;
+
+	if (!mdev)
+		return;
+
+	if (dev->tuner_linked && dev->vdev_linked && dev->vbi_linked &&
+	    dev->audio_capture_linked)
+		return;
+
+	media_device_for_each_entity(entity, mdev) {
+		switch (entity->function) {
+		case MEDIA_ENT_F_TUNER:
+			tuner = entity;
+			break;
+		case MEDIA_ENT_F_ATV_DECODER:
+			decoder = entity;
+			break;
+		case MEDIA_ENT_F_AUDIO_CAPTURE:
+			audio_capture = entity;
+			break;
+		}
+	}
+
+	/* Analog setup, using tuner as a link */
+
+	/* Something bad happened! */
+	if (!decoder)
+		return;
+
+	if (tuner && !dev->tuner_linked) {
+		dev->tuner = tuner;
+		ret = media_create_pad_link(tuner, TUNER_PAD_IF_OUTPUT,
+					    decoder, 0,
+				            MEDIA_LNK_FL_ENABLED);
+		if (ret == 0)
+			dev->tuner_linked = 1;
+	}
+
+	if (dev->vdev.entity.graph_obj.mdev && !dev->vdev_linked) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_VID_OUT,
+					    &dev->vdev.entity, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret == 0)
+			dev->vdev_linked = 1;
+	}
+
+	if (dev->vbi_dev.entity.graph_obj.mdev && !dev->vbi_linked) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_VBI_OUT,
+					    &dev->vbi_dev.entity, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret == 0)
+			dev->vbi_linked = 1;
+
+		/* Input entities are registered before vbi entity */
+		for (i = 0; i < AU0828_MAX_INPUT; i++) {
+			struct media_entity *ent = &dev->input_ent[i];
+
+			if (!ent->graph_obj.mdev)
+				continue;
+
+			if (AUVI_INPUT(i).type == AU0828_VMUX_UNDEFINED)
+				break;
+
+			switch (AUVI_INPUT(i).type) {
+			case AU0828_VMUX_CABLE:
+			case AU0828_VMUX_TELEVISION:
+			case AU0828_VMUX_DVB:
+				if (!tuner)
+					break;
+
+				media_create_pad_link(ent, 0, tuner,
+						      TUNER_PAD_RF_INPUT,
+						      MEDIA_LNK_FL_ENABLED);
+				break;
+			case AU0828_VMUX_COMPOSITE:
+			case AU0828_VMUX_SVIDEO:
+			default: /* AU0828_VMUX_DEBUG */
+				/* FIXME: fix the decoder PAD */
+				media_create_pad_link(ent, 0, decoder, 0, 0);
+				break;
+			}
+		}
+	}
+
+	if (audio_capture && !dev->audio_capture_linked) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_AUDIO_OUT,
+					    audio_capture, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret == 0)
+			dev->audio_capture_linked = 1;
+	}
+#endif
+}
+
 static void au0828_media_device_register(struct au0828_dev *dev,
 					  struct usb_device *udev)
 {
@@ -246,96 +350,13 @@ static void au0828_media_device_register(struct au0828_dev *dev,
 			return;
 		}
 	}
+	/* register entity_notify callback */
+	dev->entity_notify.notify_data = (void *) dev;
+	dev->entity_notify.notify = au0828_create_media_graph;
+	media_device_register_entity_notify(mdev, &dev->entity_notify);
+
 	dev->media_dev = mdev;
 #endif
-}
-
-
-static int au0828_create_media_graph(struct au0828_dev *dev)
-{
-#ifdef CONFIG_MEDIA_CONTROLLER
-	struct media_device *mdev = dev->media_dev;
-	struct media_entity *entity;
-	struct media_entity *tuner = NULL, *decoder = NULL;
-	int i, ret;
-
-	if (!mdev)
-		return 0;
-
-	media_device_for_each_entity(entity, mdev) {
-		switch (entity->function) {
-		case MEDIA_ENT_F_TUNER:
-			tuner = entity;
-			break;
-		case MEDIA_ENT_F_ATV_DECODER:
-			decoder = entity;
-			break;
-		}
-	}
-
-	/* Analog setup, using tuner as a link */
-
-	/* Something bad happened! */
-	if (!decoder)
-		return -EINVAL;
-
-	if (tuner) {
-		ret = media_create_pad_link(tuner, TUNER_PAD_IF_OUTPUT,
-					    decoder, 0,
-				            MEDIA_LNK_FL_ENABLED);
-		if (ret)
-			return ret;
-	}
-
-	if (dev->vdev.entity.graph_obj.mdev) {
-		ret = media_create_pad_link(decoder, AU8522_PAD_VID_OUT,
-					    &dev->vdev.entity, 0,
-					    MEDIA_LNK_FL_ENABLED);
-		if (ret)
-			return ret;
-	}
-	if (dev->vbi_dev.entity.graph_obj.mdev) {
-		ret = media_create_pad_link(decoder, AU8522_PAD_VBI_OUT,
-					    &dev->vbi_dev.entity, 0,
-					    MEDIA_LNK_FL_ENABLED);
-		if (ret)
-			return ret;
-	}
-
-	for (i = 0; i < AU0828_MAX_INPUT; i++) {
-		struct media_entity *ent = &dev->input_ent[i];
-
-		if (!ent->graph_obj.mdev)
-			continue;
-
-		if (AUVI_INPUT(i).type == AU0828_VMUX_UNDEFINED)
-			break;
-
-		switch(AUVI_INPUT(i).type) {
-		case AU0828_VMUX_CABLE:
-		case AU0828_VMUX_TELEVISION:
-		case AU0828_VMUX_DVB:
-			if (!tuner)
-				break;
-
-			ret = media_create_pad_link(ent, 0, tuner,
-						    TUNER_PAD_RF_INPUT,
-						    MEDIA_LNK_FL_ENABLED);
-			if (ret)
-				return ret;
-			break;
-		case AU0828_VMUX_COMPOSITE:
-		case AU0828_VMUX_SVIDEO:
-		default: /* AU0828_VMUX_DEBUG */
-			/* FIXME: fix the decoder PAD */
-			ret = media_create_pad_link(ent, 0, decoder, 0, 0);
-			if (ret)
-				return ret;
-			break;
-		}
-	}
-#endif
-	return 0;
 }
 
 static int au0828_usb_probe(struct usb_interface *interface,
@@ -449,13 +470,6 @@ static int au0828_usb_probe(struct usb_interface *interface,
 		dev->board.name == NULL ? "Unset" : dev->board.name);
 
 	mutex_unlock(&dev->lock);
-
-	retval = au0828_create_media_graph(dev);
-	if (retval) {
-		pr_err("%s() au0282_dev_register failed to create graph\n",
-		       __func__);
-		au0828_usb_disconnect(interface);
-	}
 
 	return retval;
 }

@@ -282,6 +282,12 @@ struct au0828_dev {
 	struct media_entity *decoder;
 	struct media_entity input_ent[AU0828_MAX_INPUT];
 	struct media_pad input_pad[AU0828_MAX_INPUT];
+	struct media_entity_notify entity_notify;
+	struct media_entity *tuner;
+	bool tuner_linked;
+	bool vdev_linked;
+	bool vbi_linked;
+	bool audio_capture_linked;
 #endif
 };
 
