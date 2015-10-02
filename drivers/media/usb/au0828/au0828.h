@@ -288,6 +288,8 @@ struct au0828_dev {
 	bool vdev_linked;
 	bool vbi_linked;
 	bool audio_capture_linked;
+	struct media_link *active_link;
+	struct media_entity *active_link_owner;
 #endif
 };
 
