@@ -575,8 +575,9 @@ int dvb_create_media_graph(struct dvb_adapter *adap)
 	}
 
 	if (tuner && demod) {
+		/* create tuner to demod link deactivated */
 		ret = media_create_pad_link(tuner, TUNER_PAD_IF_OUTPUT,
-					    demod, 0, MEDIA_LNK_FL_ENABLED);
+					    demod, 0, 0);
 		if (ret)
 			return ret;
 	}
