@@ -2472,6 +2472,7 @@ int snd_usb_create_mixer(struct snd_usb_audio *chip, int ctrlif,
 		snd_info_set_text_ops(entry, chip, snd_usb_mixer_proc_read);
 
 	list_add(&mixer->list, &chip->mixer_list);
+	usb_audio_info(chip, "Created mixer...\n");
 	return 0;
 
 _error:

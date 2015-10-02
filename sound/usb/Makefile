@@ -2,6 +2,18 @@
 # Makefile for ALSA
 #
 
+# Media Controller
+ifeq ($(CONFIG_MEDIA_CONTROLLER),y)
+  ifeq ($(CONFIG_MEDIA_SUPPORT),y)
+        KBUILD_CFLAGS += -DUSE_MEDIA_CONTROLLER
+  endif
+  ifeq ($(CONFIG_MEDIA_SUPPORT_MODULE),y)
+    ifeq ($(MODULE),y)
+          KBUILD_CFLAGS += -DUSE_MEDIA_CONTROLLER
+    endif
+  endif
+endif
+
 snd-usb-audio-objs := 	card.o \
 			clock.o \
 			endpoint.o \
@@ -13,7 +25,8 @@ snd-usb-audio-objs := 	card.o \
 			pcm.o \
 			proc.o \
 			quirks.o \
-			stream.o
+			stream.o \
+			media.o
 
 snd-usbmidi-lib-objs := midi.o
 
