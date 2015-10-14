@@ -173,6 +173,7 @@ void media_stream_delete(struct snd_usb_substream *subs)
 		mdev = media_device_find_devres(&subs->dev->dev);
 		if (mdev) {
 			media_entity_remove_links(&mctl->media_entity);
+			media_devnode_remove(mctl->intf_devnode);
 			media_device_unregister_entity(&mctl->media_entity);
 			media_entity_cleanup(&mctl->media_entity);
 		}
