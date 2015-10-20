@@ -225,6 +225,7 @@ void au0828_create_media_graph(struct media_entity *new, void *notify_data)
 	struct media_entity *entity;
 	struct media_entity *tuner = NULL, *decoder = NULL;
 	struct media_entity *audio_capture = NULL;
+	struct media_entity *mixer = NULL;
 	int i, ret;
 
 	if (!mdev)
@@ -244,6 +245,9 @@ void au0828_create_media_graph(struct media_entity *new, void *notify_data)
 			break;
 		case MEDIA_ENT_F_AUDIO_CAPTURE:
 			audio_capture = entity;
+			break;
+		case MEDIA_ENT_F_AUDIO_MIXER:
+			mixer = entity;
 			break;
 		}
 	}
@@ -309,12 +313,19 @@ void au0828_create_media_graph(struct media_entity *new, void *notify_data)
 		}
 	}
 
-	if (audio_capture && !dev->audio_capture_linked) {
-		ret = media_create_pad_link(decoder, AU8522_PAD_AUDIO_OUT,
-					    audio_capture, 0,
+	if (mixer && audio_capture && !dev->audio_capture_linked) {
+		ret = media_create_pad_link(mixer, 1, audio_capture, 0,
 					    MEDIA_LNK_FL_ENABLED);
 		if (ret == 0)
 			dev->audio_capture_linked = 1;
+	}
+
+	if (mixer && !dev->mixer_linked) {
+		ret = media_create_pad_link(decoder, AU8522_PAD_AUDIO_OUT,
+					    mixer, 0,
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret == 0)
+			dev->mixer_linked = 1;
 	}
 #endif
 }
