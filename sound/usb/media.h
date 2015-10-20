@@ -20,6 +20,7 @@
 #ifdef USE_MEDIA_CONTROLLER
 #include <media/media-device.h>
 #include <media/media-entity.h>
+#include <sound/asound.h>
 
 struct media_ctl {
 	struct media_device *media_dev;
@@ -30,6 +31,21 @@ struct media_ctl {
 	struct media_pipeline media_pipe;
 };
 
+/* One source pad each for SNDRV_PCM_STREAM_CAPTURE and
+ * SNDRV_PCM_STREAM_PLAYBACK. One for sink pad to link
+ * to AUDIO Source
+*/
+#define MEDIA_MIXER_PAD_MAX	(SNDRV_PCM_STREAM_LAST + 2)
+
+struct media_mixer_ctl {
+	struct media_device *media_dev;
+	struct media_entity media_entity;
+	struct media_intf_devnode *intf_devnode;
+	struct media_link *intf_link;
+	struct media_pad media_pad[MEDIA_MIXER_PAD_MAX];
+	struct media_pipeline media_pipe;
+};
+
 int media_device_init(struct snd_usb_audio *chip, struct usb_interface *iface);
 void media_device_delete(struct usb_interface *iface);
 int media_stream_init(struct snd_usb_substream *subs, struct snd_pcm *pcm,
@@ -37,6 +53,8 @@ int media_stream_init(struct snd_usb_substream *subs, struct snd_pcm *pcm,
 void media_stream_delete(struct snd_usb_substream *subs);
 int media_start_pipeline(struct snd_usb_substream *subs);
 void media_stop_pipeline(struct snd_usb_substream *subs);
+int media_mixer_init(struct snd_usb_audio *chip);
+void media_mixer_delete(struct snd_usb_audio *chip);
 #else
 static inline int media_device_init(struct snd_usb_audio *chip,
 					struct usb_interface *iface)
@@ -49,5 +67,7 @@ static inline void media_stream_delete(struct snd_usb_substream *subs) { }
 static inline int media_start_pipeline(struct snd_usb_substream *subs)
 					{ return 0; }
 static inline void media_stop_pipeline(struct snd_usb_substream *subs) { }
+static int media_mixer_init(struct snd_usb_audio *chip) { return 0; }
+static void media_mixer_delete(struct snd_usb_audio *chip) { }
 #endif
 #endif /* __MEDIA_H */

@@ -59,6 +59,7 @@ struct snd_usb_audio {
 	bool autoclock;			/* from the 'autoclock' module param */
 
 	struct usb_host_interface *ctrl_intf;	/* the audio control interface */
+	void *ctl_intf_media_devnode;
 };
 
 #define usb_audio_err(chip, fmt, args...) \

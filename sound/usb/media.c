@@ -199,4 +199,93 @@ void media_stop_pipeline(struct snd_usb_substream *subs)
 	if (mctl)
 		media_disable_source(mctl);
 }
+
+int media_mixer_init(struct snd_usb_audio *chip)
+{
+	struct device *ctl_dev = &chip->card->ctl_dev;
+	struct media_intf_devnode *ctl_intf;
+	struct usb_mixer_interface *mixer;
+	struct media_device *mdev;
+	struct media_mixer_ctl *mctl;
+	u32 intf_type = MEDIA_INTF_T_ALSA_CONTROL;
+	int ret;
+
+	mdev = media_device_find_devres(&chip->dev->dev);
+	if (!mdev)
+		return -ENODEV;
+
+	ctl_intf = (struct media_intf_devnode *) chip->ctl_intf_media_devnode;
+	if (!ctl_intf) {
+		ctl_intf = (void *) media_devnode_create(mdev,
+							 intf_type, 0,
+							 MAJOR(ctl_dev->devt),
+							 MINOR(ctl_dev->devt));
+		if (!ctl_intf)
+			return -ENOMEM;
+	}
+
+	list_for_each_entry(mixer, &chip->mixer_list, list) {
+
+		if (mixer->media_mixer_ctl)
+			continue;
+
+		/* allocate media_ctl */
+		mctl = kzalloc(sizeof(struct media_ctl), GFP_KERNEL);
+		if (!mctl)
+			return -ENOMEM;
+
+		mixer->media_mixer_ctl = (void *) mctl;
+		mctl->media_dev = mdev;
+
+		mctl->media_entity.function = MEDIA_ENT_F_AUDIO_MIXER;
+		mctl->media_entity.name = chip->card->mixername;
+		mctl->media_pad[0].flags = MEDIA_PAD_FL_SINK;
+		mctl->media_pad[1].flags = MEDIA_PAD_FL_SOURCE;
+		mctl->media_pad[2].flags = MEDIA_PAD_FL_SOURCE;
+		media_entity_init(&mctl->media_entity, MEDIA_MIXER_PAD_MAX,
+				  mctl->media_pad);
+		ret =  media_device_register_entity(mctl->media_dev,
+						    &mctl->media_entity);
+		if (ret)
+			return ret;
+
+		mctl->intf_link = media_create_intf_link(&mctl->media_entity,
+							 &ctl_intf->intf,
+							 MEDIA_LNK_FL_ENABLED);
+		if (!mctl->intf_link) {
+			media_device_unregister_entity(&mctl->media_entity);
+			return -ENOMEM;
+		}
+		mctl->intf_devnode = ctl_intf;
+	}
+	return 0;
+}
+
+void media_mixer_delete(struct snd_usb_audio *chip)
+{
+	struct usb_mixer_interface *mixer;
+	struct media_device *mdev;
+
+	mdev = media_device_find_devres(&chip->dev->dev);
+	if (!mdev)
+		return;
+
+	list_for_each_entry(mixer, &chip->mixer_list, list) {
+		struct media_mixer_ctl *mctl;
+
+		mctl = (struct media_mixer_ctl *) mixer->media_mixer_ctl;
+		if (!mixer->media_mixer_ctl)
+			continue;
+
+		media_entity_remove_links(&mctl->media_entity);
+		media_device_unregister_entity(&mctl->media_entity);
+		media_entity_cleanup(&mctl->media_entity);
+		mctl->media_dev = NULL;
+		mctl->intf_devnode = NULL;
+		kfree(mctl);
+		mixer->media_mixer_ctl = NULL;
+	}
+	media_devnode_remove(chip->ctl_intf_media_devnode);
+}
+
 #endif

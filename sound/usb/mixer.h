@@ -22,6 +22,7 @@ struct usb_mixer_interface {
 	struct urb *rc_urb;
 	struct usb_ctrlrequest *rc_setup_packet;
 	u8 rc_buffer[6];
+	void *media_mixer_ctl;
 };
 
 #define MAX_CHANNELS	16	/* max logical channels */
