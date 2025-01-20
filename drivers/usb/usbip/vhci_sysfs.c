@@ -154,7 +154,7 @@ static ssize_t status_show(struct device *dev,
 		       "hub port sta spd dev      sockfd local_busid\n");
 
 	pdev_nr = status_name_to_id(attr->attr.name);
-	if (pdev_nr < 0)
+	if (pdev_nr < 0 || pdev_nr >= vhci_num_controllers)
 		out += status_show_not_ready(pdev_nr, out);
 	else
 		out += status_show_vhci(pdev_nr, out);
